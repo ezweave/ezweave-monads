@@ -2,18 +2,18 @@
 
 exports[`MostMidMonad can bind a bunch of functions 1`] = `
 MostMidMonad {
-  "myValue": "FOO_SO_MID",
+  "value": "FOO_SO_MID",
 }
 `;
 
 exports[`MostMidMonad can use none to create a new Monad statically 1`] = `
 MostMidMonad {
-  "myValue": "_SO_MID",
+  "value": "_SO_MID",
 }
 `;
 
 exports[`MostMidMonad can use some to create a new Monad statically 1`] = `
 MostMidMonad {
-  "myValue": "FOO_SO_MID",
+  "value": "FOO_SO_MID",
 }
 `;

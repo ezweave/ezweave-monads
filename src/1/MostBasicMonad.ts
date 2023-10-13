@@ -7,14 +7,11 @@ abstract class Monad<A> implements IMonad<A> {
 }
 
 export class MostBasicMonad<A> extends Monad<A> {
-  myValue: A;
-
-  constructor(t: A) {
+  constructor(private readonly value: A) {
     super();
-    this.myValue = t;
   }
 
   public bind<B>(callback: (value: A) => IMonad<B>) {
-    return callback(this.myValue);
+    return callback(this.value);
   }
 }

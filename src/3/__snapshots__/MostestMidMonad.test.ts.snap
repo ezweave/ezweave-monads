@@ -2,6 +2,6 @@
 
 exports[`MostestMidMonad can use map 1`] = `
 MostestMidMonad {
-  "myValue": "FOO_MOSTEST_MID",
+  "value": "FOO_MOSTEST_MID",
 }
 `;

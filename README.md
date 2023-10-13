@@ -55,15 +55,12 @@ And our most basic `Monad` would look like this:
 
 ```ts
 export class MostBasicMonad<A> extends Monad<A> {
-  myValue: A;
-
-  constructor(t: A) {
+  constructor(private readonly value: A) {
     super();
-    this.myValue = t;
   }
 
   public bind<B>(callback: (value: A) => IMonad<B>) {
-    return callback(this.myValue);
+    return callback(this.value);
   }
 }
 ```
@@ -142,21 +139,18 @@ Now, let's make a _very incomplete_ version of the `Maybe` monad:
 
 ```ts
 export class Maybe<A> extends Monad<A> {
-  myValue?: A;
-
-  constructor(t?: A) {
+  constructor(private readonly value?: A) {
     super();
-    if (t) {
-      this.myValue = t;
-    }
   }
 
-  public bind<B>(callback: (value?: A) => IMonad<B>) {
-    return callback(this.myValue);
+  public bind<B>(callback: (value: NonNullable<A>) => IMonad<B>) {
+    return callback(this.value as NonNullable<A>);
   }
 
-  public map<B>(callback: (value?: A) => B) {
-    return this.isSome() ? Maybe.some(callback(this.myValue)) : Maybe.none();
+  public map<B>(callback: (value: NonNullable<A>) => B) {
+    return this.isSome()
+      ? new Maybe<B>(callback(this.value as NonNullable<A>))
+      : new Maybe<B>();
   }
 
   public isSome(): boolean {
@@ -164,12 +158,23 @@ export class Maybe<A> extends Monad<A> {
   }
 
   public isNone(): boolean {
-    return this.myValue === null || this.myValue === undefined;
+    return this.value === null || this.value === undefined;
+  }
+
+  public static some<A>(value: NonNullable<A>): Maybe<A> {
+    return new Maybe<A>(value);
+  }
+
+  public static none<A>(): Maybe<A> {
+    return new Maybe<A>();
   }
 }
 ```
 
 The big additions are `isSome` and `isNone` as well as an update to `map`.
+
+> [!IMPORTANT]  
+> The TypeScript utility type, `NotNullable` is useful here as without it TS will not be happy with our `none` function on `Maybe`. Even with `NotNullable` we still have to do some casting...
 
 _Why would we do this?_
 
@@ -196,3 +201,79 @@ And, as you can see from the [test](./src/4/Maybe.test.ts) it throws:
 ```sh
 "Cannot read properties of undefined (reading 'toFixed')"
 ```
+
+The `Maybe` monad we have thus far defined, has some useful tricks up its sleeves.
+
+Now, you may have noticed that we still don't actually return our value.
+
+Let's fix that by enhancing our `Maybe`
+
+```ts
+public valueOr(value: NonNullable<A>): A {
+  return this.isSome() ? this.myValue as A : value;
+}
+```
+
+Now, we can return something at the end, even if the `Maybe` monads at any point were empty.
+
+E.g:
+
+```ts
+Maybe.none().valueOr('foo');
+```
+
+Well, that's pretty neat... but how can we actually use this?
+
+### Doing Something Useful
+
+So now that we have our own version of `Maybe`, how would we actually use this?
+
+Let's pull back and define a use case.
+
+> As a user I expect to be charged sales tax so the gub'ment doesn't hunt me down.
+
+Jokes aside, we can probably assume we need some type of function that takes in a price and returns the new price, with taxes applied.
+
+Something like this:
+
+```ts
+const applyTaxes = (price: number): number => {
+  // ???
+};
+```
+
+If we say our tax rate is 5% (`0.05`) a _naive_ implementation without a monad would look like this:
+
+```ts
+const applyTaxes = (price: number): number => n * 0.05;
+```
+
+This is fine, but what if `price` comes in as `undefined`? Remember, TypeScript _does not exist at runtime_ so that is possible.
+
+And if you type `undefined * 1.05` into a JS console, you will get `NaN`,
+
+So if we wrap this in our `Maybe` monad, that looks more like this:
+
+```ts
+const applyTaxes = (price: number): number =>
+  Maybe.some(price)
+    .map((p) => p * 1.05)
+    .valueOr(0);
+```
+
+This is still pretty simple, but we can see what is happening. If the `price` is `undefined`, we still get a `0` at the end.
+
+Now what if the tax rate is variable... what if we want to curry that in?
+
+Without _exposing_ our `Maybe` that could be done like this:
+
+```ts
+const applyTaxesByRate =
+  (taxRate: number) =>
+  (price: number): number =>
+    Maybe.some(price)
+      .map((p) => p * Maybe.some(taxRate).valueOr(1))
+      .valueOr(0);
+```
+
+Where this can get _really_ powerful is when we start tying it into multiple layers of functions.

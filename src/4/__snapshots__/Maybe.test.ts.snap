@@ -1,0 +1,7 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Maybe does not break if a function returns nothing 1`] = `Maybe {}`;
+
+exports[`Maybe does nothing if there is no value 1`] = `Maybe {}`;
+
+exports[`Maybe would break if we used a different Monad 1`] = `"Cannot read properties of undefined (reading 'toFixed')"`;

@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "display": "Default",
+  "compilerOptions": {
+    "baseUrl": "./src",
+    "declaration": true,
+    "declarationMap": true,
+    "esModuleInterop": true,
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "noImplicitAny": false,
+    "outDir": "dist",
+    "paths": {
+      "@ezweave/*": ["*"]
+    },
+    "preserveConstEnums": true,
+    "removeComments": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "sourceMap": true,
+    "sourceRoot": "dist",
+    "strict": true,
+    "target": "ES2019",
+    "types": ["node", "jest"]
+  },
+  "lib": ["ES2019"],
+  "include": ["./src/**/*"],
+  "exclude": ["node_modules", "dist"]
+}

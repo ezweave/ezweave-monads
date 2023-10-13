@@ -276,4 +276,4 @@ const applyTaxesByRate =
       .valueOr(0);
 ```
 
-Where this can get _really_ powerful is when we start tying it into multiple layers of functions.
+Where this can get _really_ powerful is when we start tying it into multiple layers of functions and bringing in more monads! Which brings us to...

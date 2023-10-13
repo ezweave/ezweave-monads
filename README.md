@@ -2,7 +2,7 @@
 
 The first rule of FP is that you have to write a confusing tutorial/article on monads.
 
-## What the fuck is a Monad?
+## What the fuck is a monad?
 
 <p align="center">
   <img width="800" src="./img/wtf.jpeg" />
@@ -28,7 +28,7 @@ Obviously you wouldn't be here if that is all a monad was.
 
 A monad has one function that binds behavior to the value in the box. This function is called `bind`.
 
-`bind` takes in _one_ parameter, a function. This function takes, as an argument, the current value in the box, and returns a value... what value is based on what that function is supposed to do.
+`bind` takes in _one_ parameter, a function. This function takes, as an argument, the current value in the box, and returns a value (wrapped in a Monad)... what value is based on what that function is supposed to do.
 
 > [!IMPORTANT]  
 > `bind` is also called `flatMap` in some libraries.

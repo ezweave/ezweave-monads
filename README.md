@@ -2,6 +2,13 @@
 
 The first rule of FP is that you have to write a confusing tutorial/article on monads.
 
+## Table of Contents
+* [What the fuck is a monad?](#what-the-fuck-is-a-monad)
+* [Maybe](#maybe)
+  * [Practicality](#doing-something-useful)
+* [Either](#either)
+  * [Catamorphize](#cata)
+
 ## What the fuck is a monad?
 
 <p align="center">
@@ -135,6 +142,14 @@ MostestMidMonad.some('foo')
 > [!IMPORTANT]  
 > `map` doesn't necessarily operate over a collection like `map`s you may be used to. [They don't love you like I love you.](https://www.youtube.com/watch?v=oIIxlgcuQRU)
 
+[Table of Contents](#table-of-contents)
+
+## Maybe
+
+<p align="center">
+  <img width="500" src="./img/maeby.jpg" />
+</p>
+
 Now, let's make a _very incomplete_ version of the `Maybe` monad:
 
 ```ts
@@ -224,6 +239,9 @@ Maybe.none().valueOr('foo');
 
 Well, that's pretty neat... but how can we actually use this?
 
+
+[Table of Contents](#table-of-contents)
+
 ### Doing Something Useful
 
 So now that we have our own version of `Maybe`, how would we actually use this?
@@ -276,10 +294,237 @@ const applyTaxesByRate =
       .valueOr(0);
 ```
 
-Where this can get _really_ powerful is when we start tying it into multiple layers of functions and bringing in more monads! Which brings us to...
+Where this can get _really_ powerful is when we start tying it into multiple layers of functions and bringing in more monads!
 
-A moment of introspection.
+Now let's bake your noodle a bit.
 
-While there is a definition of _monad_ we will eventually uncover, let's talk about naming.
+`applyTaxesByRate` is _also_ a monad.
 
-## What's in a name?
+Let's rewrite it to fit our monad semantics:
+
+```ts
+class ApplyTaxesByRate {
+  constructor(public readonly value: number) {}
+
+  bind(callback: (n: number) => ApplyTaxesByRate) {
+    const newValue = callback(this.value).value;
+    return new ApplyTaxesByRate(newValue);
+  }
+
+  isNone() {
+    return this.value === null || this.value === undefined;
+  }
+
+  isSome() {
+    return !this.isNone();
+  }
+
+  map(callback: (n: number) => number) {
+    return this.isSome()
+      ? new ApplyTaxesByRate(callback(this.value))
+      : this;
+  }
+
+  valueOrZero() {
+    return this.isSome() ? this.value : 0;
+  }
+
+  static from(n: number) {
+    return new ApplyTaxesByRate(n);
+  }
+}
+```
+
+Then you could use it like so:
+
+```ts
+const foo = (taxRate: number) => (price: number) =>
+  ApplyTaxesByRate.from(taxRate)
+    .map((n) => n * price)
+    .valueOrZero();
+
+const fooTenpercent = foo(1.1);
+```
+
+[Table of Contents](#table-of-contents)
+
+
+## Either
+
+Elliot Smith's "Either/Or" is consid... oh sorry.  We're talking about monads, not about [sad songs](https://open.spotify.com/track/6L9uay2MM8qACwI1yQHnw2?si=d1c4ff544da147ad).
+
+`Either` is a particularly powerful monad you may end up using a bit.  Similar to `Maybe` the implied context is just more extended.
+
+* `Maybe`: this monad may give you an error.
+* `Either`: will tell you why.
+
+It's handy to think of `Either` as being _branching logic_ while `Maybe` is more like "safety" logic.
+
+Let's explore `Either` and _then_ we can compare `Either` and `Maybe`.
+
+We need a new function. This one parses JSON.  Let's call it `parseJSON`.
+
+In plain TS, we would do something like this:
+
+```ts
+const parseJSON = <T>(json: string): T => <T>JSON.parse(json);
+```
+
+This is great, until we try to call it with a string that doesn't contain JSON:
+
+```ts
+parseJSON('not json');
+```
+
+As you would expect, this throws an error.
+
+Now we have some options:
+* The caller can wrap the `parseJSON` call in a `try/catch`.
+* `parseJSON` could return `undefined`` if it cannot parse JSON.
+
+The former is not great.  It requires the caller to code two paths, increasing [_cyclomatic complexity_](https://en.wikipedia.org/wiki/Cyclomatic_complexity) which adds to cognitive load for a maintainer.
+
+E.g. 
+
+```ts 
+let user;
+try {
+  user = parseJSON(user);
+} catch {
+  user = undefined;
+}
+...
+
+if(user !== undefined) {
+  // do stuff
+}
+```
+
+A few lines of this can be okay, but it quickly turns code into soup as context (the `user` assignment) gets lost.
+
+Now consider the other option, returning `undefined`:
+
+```ts
+const parseJSON = <T>(json: string): T | undefined => {
+  try {
+    return <T>JSON.parse(json);
+  } catch {
+    return undefined;
+  }
+};
+```
+
+This is definitely _safer_, but it still requires the caller to understand that the value may be `undefined`, which puts us right back to where we were before.
+
+Enter `Either`.
+
+```ts
+const parseJSON = <T>(json: string): Either<Error, T> => {
+  try {
+    return Right(<T>JSON.parse(json));
+  } catch (e: any) {
+    return Left(e);
+  }
+};
+```
+
+Now we return a new `Either` which may have our object or it may have an error.
+
+Let's use it!
+
+Here's a sequence that will give us a `Right`: 
+
+```ts
+const jsonString = JSON.stringify('{"firstName":"Spike","lastName":"Spiegel"}');
+
+const parsedJSON = parseJSON(jsonString).right();
+```
+
+In this case, we got a valid value.
+
+Here, similarly, is a `Left`:
+
+```ts
+const jsonString = JSON.stringify('a;sdklfajdsfafkldf { /// ###');
+
+const error = parseJSON(jsonString).left();
+```
+
+Now, I know what you're thinking:
+
+> How is this any better than before?
+
+There's a few things.  For one `isRight` and `isLeft` are still around.  So we can use this with imperitive style code and remove the `let` sort of assignment we had before.
+
+But that's not where this gets really neat.  That's when we start to build _more functions_ that speak monad.
+
+You can find more in the [example](./src/5/Either.test.ts), but let's say we have a function that will get user info from an external API, `getUserById`.  This takes in a string that cointains a user id.
+
+Now, this function only returns stringified JSON.  You are asked to write a new function that gets the user's email address from this object.  How would we do that monadically?
+
+```ts
+const getUserEmail = (json: string): Either<Error, string> => 
+  parseJSON<User>(json).bind(
+    (user: user): Either<Error, string> => user ? Right(user.email) : Left(new Error('no data in response'))
+  );
+```
+
+Now, we're using `parseJSON` first, to get us either an object or an error.  Then we're using `bind` on the `Either<Error, User>` returned to create a new `Either` that has either the email address _or_ an error message.
+
+Then that gives us the following scenarios:
+
+```ts
+const email = getUserEmail('a;sdklfajdsfafkldf { /// ###');
+
+if(email.isLeft()) {
+  console.error(email.left().message); // oh no!
+}
+```
+
+And in the positive case:
+
+```ts
+const email = getUserEmail('{"email":"homer.j.simpson@springfield.org"}');
+
+if(email.isRight()) {
+  sendMessage(email.right().value(), 'Hi, Homer!');
+}
+```
+
+This is obviously a bit silly, but you can start to see how chains of monads can make logical processing simpler.
+
+Let's introduce a new monadic functor...
+
+[Table of Contents](#table-of-contents)
+
+### Cata
+
+Meow.
+
+`cata` is short for "Catamorphize", which means a few things, but we're going to ignore the text book definition and use it practically.
+
+In Monet, `cata` takes in two functions. One operates on the _left_ of an `Either` and one on the _right_.  Neither operates if the conditions are not meant.  
+
+If we use our email example, from above, we _could_ use `cata` to fire IO.
+
+```ts
+getUserEmail(json).cata(
+  logError,
+  sendEmail
+)
+```
+
+This will return a new `Either` that either has the output of the `sendEmail` call _or_ an error.
+
+Now, you should _not_ use IO here so let's instead go back and revisit `getUserEmail`, because now we can use `cata` to clean it up!
+
+```ts
+const getUserEmail = (json: string): Either<Error, string> =>
+  parseJSON<User>(json).cata(
+    _ => Left(new Error('No data in user')),
+    user => Right(user.email)
+  );
+```
+
+[Table of Contents](#table-of-contents)
+

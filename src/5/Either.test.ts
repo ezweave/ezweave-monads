@@ -1,6 +1,6 @@
 import { Either, Left, Right } from 'monet';
 
-import { getCharacter, getCustomerPriceFromReponse, parseJSON } from './Either';
+import { getCustomerPriceFromReponse, parseJSON } from './Either';
 
 describe(parseJSON, () => {
   it('returns a JSON object if the string contains valid JSON', () => {
@@ -40,20 +40,6 @@ describe(parseJSON, () => {
     url: string;
   }
 
-  it('gets the height of a Star Wars character', async () => {
-    const lukeResponse = await getCharacter(1);
-
-    const lukesHeight = parseJSON<StarWarsCharacter>(lukeResponse.data)
-      .bind(
-        (luke: StarWarsCharacter): Either<Error, string> =>
-          luke ? Right(luke.height) : Left(new Error('no data in response')),
-      )
-      .map((height) => parseInt(height))
-      .right();
-
-    expect(lukesHeight).toEqual(172);
-  });
-
   it('returns an Either that isLeft immediately if the value cant be parsed', async () => {
     const badResponse = { data: '{$$$$$$$}' };
 
@@ -83,7 +69,33 @@ describe(parseJSON, () => {
       .map((height) => parseInt(height))
       .left();
 
-    expect(error.message).toEqual('Error: no data in response');
+    expect(error.message).toEqual('no data in response');
+  });
+
+  it('can be used inside other functions', () => {
+    interface User {
+      firstName: string;
+      lastName: string;
+      email: string;
+    }
+
+    const homer: User = {
+      firstName: 'Homer',
+      lastName: 'Simpson',
+      email: 'homer.j.simpson@springfield.org',
+    };
+
+    const rawJson = JSON.stringify(homer);
+
+    const getUserEmail = (json: string): Either<Error, string> =>
+      parseJSON<User>(json).cata(
+        (_) => Left(new Error('No data in user')),
+        (user) => Right(user.email),
+      );
+
+    const eitherEmailOrError = getUserEmail(rawJson);
+
+    expect(eitherEmailOrError.right()).toEqual(homer.email);
   });
 });
 
@@ -97,10 +109,7 @@ describe(getCustomerPriceFromReponse, () => {
     expect(getCustomerPriceFromReponse(response).right()).toEqual(69);
   });
   it('gets no rate if there is an error', () => {
-    const response = JSON.stringify({
-      customerPrice: 69,
-      id: 'adfadsfdf',
-    });
+    const response = '{{notjson';
 
     const priceEither = getCustomerPriceFromReponse(response);
 

@@ -19,7 +19,10 @@ module.exports = {
   },
   moduleFileExtensions: ['ts', 'js', 'json'],
   moduleDirectories: ['node_modules'],
-  moduleNameMapper,
+  moduleNameMapper: {
+    ...moduleNameMapper,
+    axios: '<rootDir>/../node_modules/axios/dist/node/axios.cjs',
+  },
   rootDir: 'src',
   transform: {
     '^.+\\.ts$': 'ts-jest',

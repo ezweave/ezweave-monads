@@ -516,7 +516,10 @@ getUserEmail(json).cata(
 
 This will return a new `Either` that either has the output of the `sendEmail` call _or_ an error.
 
-Now, you should _not_ use IO here so let's instead go back and revisit `getUserEmail`, because now we can use `cata` to clean it up!
+> [!IMPORTANT]  
+> It's not a good idea to drop IO into a monad.  Because IO has _side-effects_.  But you can pass or curry IO functions in as arguments _where_ you need them, and use monads to transform and process.
+
+Now, since you know you should _not_ use IO here let's go back and revisit `getUserEmail`, because now we can use `cata` to clean it up!
 
 ```ts
 const getUserEmail = (json: string): Either<Error, string> =>
@@ -524,6 +527,126 @@ const getUserEmail = (json: string): Either<Error, string> =>
     _ => Left(new Error('No data in user')),
     user => Right(user.email)
   );
+```
+
+And if you really wanted, you could make some utility functions to make this even cleaner:
+
+```ts
+const buildLeftError = (message: string) => _ => Left(new Error(message));
+const parseEmail = (user) => Right(user.email);
+
+const getUserEmail = (json: string): Either<Error, string> =>
+  parseJSON<User>(json).cata(
+   buildLeftError('No data in user'),
+   parseEmail,
+  );
+```
+
+Going back to our earlier example, we can rewrite an entire "email service" by being smart with our IO:
+
+```ts
+const buildLeftError = (message: string) => _ => Left<Error, string>(new Error(message));
+const parseEmail = (user: User) => Right<Error, string>(user.email);
+
+const getEmail = (json: string): Either<Error, string> =>
+  parseJSON<User>(json).cata(
+   buildLeftError('No data in user'),
+   parseEmail,
+  );
+
+export const getUserEmail = async (userId: string, ioFunction: IOFunction): Either<Error, string> => 
+  await ioFunction(userId).then(getEmail).catch(buildLeftError('Io failure'));
+```
+
+So you can imagine we support a few cases now:
+* If the IO call fails, we return a `Left(new Error('Io failure'))`
+* If the object returned cannot be parsed, we get a `Left(new Error('some json parsing error'))`
+* If the user object is empty, a `Left(new Error('No data in user'))`
+
+Hmmm... but what if our email isn't valid?  We should probably catch that!
+
+Let's say we have a custom function, `isUserEmailValid` that returns `true` if the email is valid and `false` if it is not (we won't bother writing that here).  If we enhance our `parseEmail` function, we can catch this error case:
+
+```ts
+const parseEmail = (user: User) => isUserEmailValid(user) ? Right(user.email) : Left(new Error('Invalid email'));
+```
+
+Or maybe you want `isUserEmailValid` to throw an error?
+
+```ts
+const parseEmail = (user: User) => {
+  try {
+    isUserEmailValid(user);
+    return Right(user.email);
+   } catch (e: Error) {
+    return Left(e);
+   }
+}; 
+```
+
+In either, event, we now cover 4 error cases without having a litany of disjointed `try/catch` blocks.
+
+* If the IO call fails, we return a `Left(new Error('Io failure'))`
+* If the object returned cannot be parsed, we get a `Left(new Error('some json parsing error'))`
+* If the user object is empty, a `Left(new Error('No data in user'))`
+* If the email is invalid, we get a `Left(new Error('Invalid email'))`
+
+Let's compare both approaches.
+
+First, iterative code:
+
+```ts
+export const getUserEmail = async (userId: string, ioFunction: IOFunction): string | Error => {
+  const rawUser = await ioFunction(userId);
+
+  let user;
+  try {
+    user = JSON.parse<User>(rawUser);
+  } catch (e) {
+    return e;
+  }
+
+  if(user) {
+    const email = get(user, 'email', undefined);
+
+    if(email) {
+      if(isUserEmailValid(email)) {
+        return email;
+      } else {
+        return new Error('Invalid email');
+      }
+    } else {
+      return new Error('No email found');
+    }
+  }
+}
+```
+
+It's not _terrible_ to look at, but notice how the logical controls mix heirarchy around.  It's hard for a developer
+to grok where things are happening.  
+
+Now consider the entirity of our monadic solution:
+
+```ts
+const parseJSON = <T>(json: string): Either<Error, T> => {
+  try {
+    return Right(<T>JSON.parse(json));
+  } catch (e: any) {
+    return Left(e);
+  }
+}
+
+const buildLeftError = (message: string) => _ => Left<Error, string>(new Error(message));
+const parseEmail = (user: User) => isUserEmailValid(user) ? Right(user.email) : Left(new Error('Invalid email'));
+
+const getEmail = (json: string): Either<Error, string> =>
+  parseJSON<User>(json).cata(
+   buildLeftError('No data in user'),
+   parseEmail,
+  );
+
+export const getUserEmail = async (userId: string, ioFunction: IOFunction): Either<Error, string> => 
+  await ioFunction(userId).then(getEmail).catch(buildLeftError('Io failure'));
 ```
 
 [Table of Contents](#table-of-contents)

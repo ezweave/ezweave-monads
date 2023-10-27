@@ -649,5 +649,13 @@ export const getUserEmail = async (userId: string, ioFunction: IOFunction): Eith
   await ioFunction(userId).then(getEmail).catch(buildLeftError('Io failure'));
 ```
 
+Now you might be saying, _you're cheating!  You broke the monadic solution into multiple functions!_
+
+You're right.  I did.
+
+_But..._
+
+It brings up an interesting point: monadic code, like functional programming itself, _encourages_ developers to break up logic into smaller functions.  It is actually _harder_ to write
+
 [Table of Contents](#table-of-contents)
 

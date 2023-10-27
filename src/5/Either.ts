@@ -1,11 +1,5 @@
-import axios from "axios";
-import { Either, Left, Right } from "monet";
-
-
-
-
-
-
+import axios from 'axios';
+import { Either, Left, Right } from 'monet';
 
 export const parseJSON = <T>(json: string): Either<Error, T> => {
   try {
@@ -13,29 +7,23 @@ export const parseJSON = <T>(json: string): Either<Error, T> => {
   } catch (e: any) {
     return Left(e);
   }
-}
-
+};
 
 interface Rate {
-  customerPrice: number,
-  id: string,
+  customerPrice: number;
+  id: string;
 }
 
-export const getCustomerPriceFromReponse = (json: string): Either<undefined, number> =>
-  parseJSON<Rate>(json).cata(_ => Left(undefined), rate => Right(rate.customerPrice));
+export const getCustomerPriceFromReponse = (
+  json: string,
+): Either<undefined, number> =>
+  parseJSON<Rate>(json).cata(
+    (_) => Left(undefined),
+    (rate) => Right(rate.customerPrice),
+  );
 
-
-
-
-
-
-
-
-
-
-
-
-export const getCharacter = async (n: number) => await axios.get(`https://swapi.dev/api/people/${n}/`);
+export const getCharacter = async (n: number) =>
+  await axios.get(`https://swapi.dev/api/people/${n}/`);
 // export const getCharacter = async (n: number) => ({
 //   data: JSON.stringify({
 //     "name": "Luke Skywalker",

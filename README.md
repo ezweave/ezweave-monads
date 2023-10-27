@@ -277,3 +277,9 @@ const applyTaxesByRate =
 ```
 
 Where this can get _really_ powerful is when we start tying it into multiple layers of functions and bringing in more monads! Which brings us to...
+
+A moment of introspection.
+
+While there is a definition of _monad_ we will eventually uncover, let's talk about naming.
+
+## What's in a name?

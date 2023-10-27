@@ -40,10 +40,47 @@ describe(Maybe, () => {
 
     const applyTaxesByRate =
       (taxRate: number) =>
-      (price: number): number =>
-        Maybe.some(price)
-          .map((p) => p * Maybe.some(taxRate).valueOr(1))
-          .valueOr(0);
+        (price: number): number =>
+          Maybe.some(price)
+            .map((p) => p * Maybe.some(taxRate).valueOr(1))
+            .valueOr(0);
+
+    class ApplyTaxesByRate {
+      constructor(public readonly value: number) { }
+
+      bind(callback: (n: number) => ApplyTaxesByRate) {
+        const newValue = callback(this.value).value;
+        return new ApplyTaxesByRate(newValue);
+      }
+
+      isNone() {
+        return this.value === null || this.value === undefined;
+      }
+
+      isSome() {
+        return !this.isNone();
+      }
+
+      map(callback: (n: number) => number) {
+        return this.isSome() ? new ApplyTaxesByRate(
+          callback(this.value)
+        ) : this;
+      }
+
+      valueOrZero() {
+        return this.isSome() ? this.value : 0;
+      }
+
+      static from(n: number) {
+        return new ApplyTaxesByRate(n);
+      }
+    }
+
+    const foo = (taxRate: number) => (price: number) => ApplyTaxesByRate.from(taxRate).map(n => n * price).valueOrZero();
+
+    const fooTenpercent = foo(1.1);
+
+    const total = fooTenpercent(100);
 
     const applyTaxesAtTwoPercent = applyTaxesByRate(1.02);
     expect(applyTaxesAtTwoPercent(100)).toEqual(102);
